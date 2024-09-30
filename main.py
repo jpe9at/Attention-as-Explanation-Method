@@ -21,13 +21,15 @@ parser = argparse.ArgumentParser()
 
 # Step 2: Add the file path argument
 parser.add_argument('file_path', type=str, help='The path to the input file')
+parser.add_argument('path_to_save', type=str, help='The path to save the trained model to')
 
 # Step 3: Parse the arguments
 args = parser.parse_args()
 
 # Use the argument in your script
 path = args.file_path
-
+save_path = args.path_to_save +'.pth'
+save_path_parameters = args.path_to_save + '_parameters.pth'
 print('Load the dataframe')
 tweet_dataframe = pd.read_csv(path)
 
@@ -55,6 +57,9 @@ model = BERTClassifier('bert-base-uncased', 6).to(device)
 # Train the model
 trainer = Trainer()
 trainer.fit(model, train_dataset)
+
+torch.save(model.state_dict(), save_path_parameters)
+torch.save(model, save_path)
 
 # Test explanations
 # Choose instance and label
