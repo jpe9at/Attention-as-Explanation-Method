@@ -26,7 +26,7 @@ class AttentionLayer(nn.Module):
         return context_vector, attention_weights
 
 class BERTClassifier(nn.Module):
-    def __init__(self, bert_model_name, num_classes, optimizer='SGD', learning_rate=0.001, loss_function='BCE', l1=0.0, l2=0.0, clip_val=0, scheduler=None):
+    def __init__(self, bert_model_name, num_classes, optimizer='Adam', learning_rate=0.001, loss_function='BCE', l1=0.0, l2=0.0, clip_val=0, scheduler=None):
         super(BERTClassifier, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model_name)
 

@@ -17,6 +17,9 @@ class Trainer:
         # Set the device
         self.device = torch.device("cuda" if torch.cuda.is_available() and num_gpus > 0 else "cpu")
 
+    def prepare_val_data(self, text_data):
+        self.val_dataloader = DataLoader(text_data, batch_size=self.batch_size, shuffle=True)
+    
     def prepare_training_data(self, text_data):
         self.train_dataloader = DataLoader(text_data, batch_size=self.batch_size, shuffle=True)
     
@@ -27,16 +30,19 @@ class Trainer:
         model.trainer = self
         self.model = model.to(self.device)  # Move model to the device
     
-    def fit(self, model, dataset):
+    def fit(self, model, train_dataset, val_dataset):
         self.train_loss_values = []
         self.val_loss_values = []
-        self.prepare_training_data(dataset)
+        self.prepare_training_data(train_dataset)
+        self.prepare_val_data(val_dataset)
         self.prepare_model(model)
         
         for epoch in range(self.max_epochs):
             self.model.train()
-            train_loss = self.fit_epoch()
-
+            train_loss, val_loss = self.fit_epoch()
+            self.train_loss_values.append(train_loss)
+            self.val_loss_values.append(val_loss)
+    
     def fit_epoch(self):
         train_loss = 0.0
         total_batches = len(self.train_dataloader)
@@ -56,11 +62,21 @@ class Trainer:
             train_loss += loss.item() * text.size(0)
 
             # Print progress
+            time.sleep(0.1)  # Simulate batch processing time
+
             progress = (idx + 1) / total_batches * 100
             print(f"\rBatch {idx + 1}/{total_batches} completed. Progress: {progress:.2f}%", end='', flush=True)
 
         train_loss /= len(self.train_dataloader.dataset)
-        return train_loss
+        self.model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for text, attention_mask, labels in self.val_dataloader:
+                val_output, _ = self.model(text, attention_mask)
+                loss = self.model.loss(val_output, labels)
+                val_loss += loss.item() * text.size(0) #why multiplication with 0?
+            val_loss /= len(self.val_dataloader.dataset)
+        return train_loss, val_loss
 
     def test(self, model, data):
         model.eval()
@@ -78,7 +94,6 @@ class Trainer:
                 probabilities = torch.sigmoid(y_hat)
                 all_targets.append(labels)
                 all_predictions.append(probabilities)
-                print('batch_done') 
         
         all_targets = torch.cat(all_targets).cpu()  # Move to CPU for metrics calculation
         all_predictions = torch.cat(all_predictions).cpu()
@@ -89,7 +104,7 @@ class Trainer:
         # Metrics calculation
         subset_acc = accuracy_score(y_true, (y_pred_prob > 0.5).astype(int))
         hamming = hamming_loss(y_true, (y_pred_prob > 0.5).astype(int))
-        roc_auc = roc_auc_score(y_true, y_pred_prob, average='macro', multi_class='ovr')
+        #roc_auc = roc_auc_score(y_true, y_pred_prob, average='macro', multi_class='ovr')
 
-        return subset_acc, hamming, roc_auc
+        return subset_acc, hamming # , roc_auc
 
