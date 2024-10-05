@@ -1,4 +1,4 @@
-## XAI
+## Attention as Explanation
 
 (work in progress)
 
