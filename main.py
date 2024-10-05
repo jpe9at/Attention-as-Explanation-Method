@@ -105,7 +105,7 @@ else:
 item = train_dataset.__getitem__(21)
 input_ids, attention_mask, labels = item[0].to(device), item[1].to(device), item[2].to(device)
 
-Manual = clean_text("Bitch, fuck you, what do you want from me? ")
+Manual = clean_text("Is this a toxic comment?")
 encoding_manual = tokenizer([Manual], padding=True, truncation=True, return_tensors='pt', max_length=16)
 
 ###########################################################################
