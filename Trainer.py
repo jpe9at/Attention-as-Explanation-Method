@@ -9,10 +9,9 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 class Trainer: 
     """The base class for training models with data."""
     def __init__(self, max_epochs=1, batch_size=36, early_stopping_patience=6, 
-                 min_delta=0.09, num_gpus=0, max_length=16):
+                 min_delta=0.009):
         self.max_epochs = max_epochs
         self.batch_size = batch_size
-        self.max_length = max_length
 
         # Set the device
         self.device = torch.device("cuda" if torch.cuda.is_available() and num_gpus > 0 else "cpu")
@@ -42,7 +41,7 @@ class Trainer:
             train_loss, val_loss = self.fit_epoch()
             self.train_loss_values.append(train_loss)
             self.val_loss_values.append(val_loss)
-    
+            print(f"Epoch {epoch + 1}/{self.max_epochs} completed. Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")  # Print epoch summary
     def fit_epoch(self):
         train_loss = 0.0
         total_batches = len(self.train_dataloader)
@@ -52,7 +51,6 @@ class Trainer:
             text = text.to(self.device)
             attention_mask = attention_mask.to(self.device)
             labels = labels.to(self.device)
-
             output, _ = self.model(text, attention_mask)
             loss = self.model.loss(output, labels)
             self.model.optimizer.zero_grad()
@@ -68,6 +66,7 @@ class Trainer:
             print(f"\rBatch {idx + 1}/{total_batches} completed. Progress: {progress:.2f}%", end='', flush=True)
 
         train_loss /= len(self.train_dataloader.dataset)
+        print(train_loss)
         self.model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -107,4 +106,34 @@ class Trainer:
         #roc_auc = roc_auc_score(y_true, y_pred_prob, average='macro', multi_class='ovr')
 
         return subset_acc, hamming # , roc_auc
+    
+    def test_multiclass(self, model, data):
+            model.eval()
+            self.prepare_test_data(data)
+            all_targets = []
+            all_predictions = []
+
+            with torch.no_grad():
+                for text, attention_mask, labels in self.test_dataloader:
+                    # Move inputs to the device
+                    text = text.to(self.device)
+                    attention_mask = attention_mask.to(self.device)
+                    
+                    y_hat, _ = model(text, attention_mask)
+                    predictions = torch.argmax(y_hat, dim = 1) #shape (batch_size, num_classes)
+                    all_targets.append(labels)
+                    all_predictions.append(predictions)
+            
+            all_targets = torch.cat(all_targets).cpu()  # Move to CPU for metrics calculation
+            all_predictions = torch.cat(all_predictions).cpu()
+
+            y_true = all_targets.numpy()
+            y_pred = all_predictions.numpy() 
+
+            # Metrics calculation
+            subset_acc = accuracy_score(y_true, y_pred)
+            #hamming = hamming_loss(y_true, (y_pred_prob > 0.5).astype(int))
+            #roc_auc = roc_auc_score(y_true, y_pred_prob, average='macro', multi_class='ovr')
+
+            return subset_acc #, hamming # , roc_auc
 

@@ -1,0 +1,38 @@
+# Trained models
+
+*.pth
+
+# Environment and dependency files
+venv/
+.env
+__pycache__/
+*.py[cod]
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+
+# Configuration and secret files
+config.json
+credentials.json
+

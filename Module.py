@@ -4,6 +4,29 @@ import torch
 import torch.nn.init as init
 import torch.nn.functional as F
 
+
+class UniformAttentionLayer(nn.Module):
+    def __init__(self, hidden_size):
+        super(UniformAttentionLayer, self).__init__()
+        self.hidden_size = hidden_size
+
+    def forward(self, hidden_states):
+        # hidden_states shape: (batch_size, seq_len, hidden_size)
+        batch_size, seq_len, _ = hidden_states.shape
+        
+        # Create uniform attention weights: 1/seq_len for each token
+        attention_weights = torch.ones(batch_size, seq_len) / seq_len
+        attention_weights = attention_weights.to(hidden_states.device)  # Move to the same device
+
+        # Expand dimensions for multiplication
+        attention_weights = attention_weights.unsqueeze(-1)  # Shape: (batch_size, seq_len, 1)
+
+        # Compute the context vector as the weighted sum of hidden states
+        context_vector = torch.sum(attention_weights * hidden_states, dim=1)  # Shape: (batch_size, hidden_size)
+
+        return context_vector, attention_weights
+
+
 class AttentionLayer(nn.Module):
     def __init__(self, hidden_size, device):
         super(AttentionLayer, self).__init__()
@@ -26,15 +49,22 @@ class AttentionLayer(nn.Module):
         return context_vector, attention_weights
 
 class BERTClassifier(nn.Module):
-    def __init__(self, bert_model_name, num_classes, optimizer='Adam', learning_rate=0.001, loss_function='BCE', l1=0.0, l2=0.0, clip_val=0, scheduler=None):
+    def __init__(self, bert_model_name, num_classes, optimizer='Adam', learning_rate=0.001, loss_function='BCE', l1=0.0, l2=0.0, clip_val=0, scheduler=None, attention = 'dense'):
         super(BERTClassifier, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model_name)
 
         for param in self.bert.parameters():
             param.requires_grad = False
 
-        device = next(self.parameters()).device  # Get current device
-        self.attention_layer = AttentionLayer(hidden_size=self.bert.config.hidden_size, device=device)
+        device = next(self.parameters()).device  # Get curren't device
+        if attention == 'dense': 
+            self.attention_layer = AttentionLayer(self.bert.config.hidden_size,device)
+        elif attention == 'uniform': 
+            self.attention_layer = UniformAttentionLayer(self.bert.config.hidden_size)
+        elif attention == 'sparse':
+            raise NotImplementedError("Implement Sparse Attention.")
+        else: 
+            raise ValueError(f"Invalid mode: {attention}. Must be one of one of 'dense', 'uniform' or 'sparse'.")
         self.dropout = nn.Dropout(0.1)
         self.fc = nn.Linear(self.bert.config.hidden_size, num_classes)
 

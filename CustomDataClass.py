@@ -8,16 +8,19 @@ def clean_text(text):
     text = text.lower()
     text = re.sub(r'http\S+', '', text)
     text = re.sub(r'\d+', '', text)
-    text = re.sub(r'[^\w\s]', '', text)
+    #text = re.sub(r'[^\w\s]', '', text)
     text = re.sub(r'\n', ' ', text)
     text = text.strip()
     return text
 
 class TextData(Dataset):
     """Dataset class for text data."""
-    def __init__(self, texts, labels, tokenizer, max_length=64, train = True):
+    def __init__(self, texts, labels, tokenizer, max_length=64, train = True, labels_datatype = 'float'):
         self.texts = texts 
-        self.labels = torch.tensor(labels.to_numpy(), dtype=torch.float32)
+        if labels_datatype == 'float':
+            self.labels = torch.tensor(labels.to_numpy(), dtype=torch.float32)
+        else: 
+            self.labels = torch.tensor(labels.to_numpy(), dtype=torch.long)
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.train = train
