@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import time
 from datasets import load_dataset
 import os
-
+import sys
 ##########################################################################
 # Path filepath as argument.
 parser = argparse.ArgumentParser()
@@ -31,11 +31,11 @@ args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
 
-if not os.path.exists(path_to_save):
-    print(f"{path_to_save} is not a valid path.")
+if not os.path.exists(args.path_to_save):
+    print(f"{args.path_to_save} is not a valid path.")
     sys.exit(1)
 
-save_path = args.path_to_save + '/model.pth'
+save_path = args.path_to_save + 'model.pth'
 
 #will be changed to True if using dbpedia dataset
 multiclass = False
@@ -69,9 +69,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 print('Load the dataframe')
 
 #select dataset, uncomment the desired dataset
-dataset = load_dataset("imdb")
+#dataset = load_dataset("imdb")
 
-#dataset = load_dataset("yelp_polarity")
+dataset = load_dataset("yelp_polarity")
 
 #dataset = load_dataset("dbpedia_14")
 #multiclass = True
@@ -80,15 +80,18 @@ train_dataset = pd.DataFrame(dataset["train"])
 test_dataset = pd.DataFrame(dataset["test"])
 
 # Split data into train and test sets
-X_train, X_val, y_train, y_val = train_test_split(train_dataset['content'], train_dataset['label'], test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(train_dataset['text'], train_dataset['label'], test_size=0.2, random_state=42)
 
 tokenizer = BertTokenizer.from_pretrained('prajjwal1/bert-tiny')
 
 # Create the dataset
-train_dataset = TextData(X_train, y_train, tokenizer, max_length=25, train=True, labels_datatype = 'long')
-val_dataset = TextData(X_val, y_val, tokenizer, max_length=25, train=True, labels_datatype = 'long')
+train_dataset = TextData(X_train, y_train.to_frame(), tokenizer, max_length=25, train=True)
+val_dataset = TextData(X_val, y_val.to_frame(), tokenizer, max_length=25, train=True)
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=True)
+
 #if using db_pedia
+#train_dataset = TextData(X_train, y_train, tokenizer, max_length=25, train=True, labels_datatype = 'long')
+#val_dataset = TextData(X_val, y_val, tokenizer, max_length=25, train=True, labels_datatype = 'long')
 #test_dataset = TextData(test_dataset['content'], test_dataset['label'], tokenizer, max_length=25, train=True, labels_datatype = 'long')
 
 
@@ -115,7 +118,7 @@ else:
 
 
 # Train the model
-trainer = Trainer(max_epochs=35, batch_size = 64)
+trainer = Trainer(max_epochs=1, batch_size = 64)
 trainer.fit(model, train_dataset, val_dataset)
 
 acc, _ = trainer.test(model, test_dataset)    #need to use .test_multiclass for dbpedia

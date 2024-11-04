@@ -43,7 +43,7 @@ tokenizer = BertTokenizer.from_pretrained('prajjwal1/bert-tiny')
 multiclass = False
 
 ###########################################
-
+'''
 print('Load the Jigsaw dataframe')
 tweet_dataframe = pd.read_csv(path)
 
@@ -59,9 +59,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_
 
 # Create the test dataset
 test_dataset = TextData(X_test[-750:], y_test[-750:], tokenizer, max_length=25, train=False)
+'''
 
-print('Load the model')
-model = torch.load(model_path)
 
 ############################################
 '''
@@ -77,20 +76,18 @@ print(device)
 # Create the dataset
 test_dataset = TextData(test_dataset['content'], test_dataset['label'], tokenizer, max_length=25, train=False, labels_datatype = 'long')
 
-model = torch.load('model_sparse_db_pedia.pth')
 '''
 ###############################################
-'''
+
 print('loading imdb')
 dataset = load_dataset("imdb")
 
-test_dataset = pd.DataFrame(dataset["test"][0:750])
+test_dataset = pd.DataFrame(dataset["test"][0:50])
 
 # Create the dataset
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=False, labels_datatype = 'long')
 
-model = torch.load('model_imdb.pth')
-'''
+
 #####################################################################
 '''
 print('loading yelp')
@@ -101,11 +98,11 @@ test_dataset = pd.DataFrame(dataset["test"][0:500])
 # Create the dataset
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=False, labels_datatype = 'long')
 
-model = torch.load('model_sparse_yelp.pth')
 '''
 ###########################################################
 
-
+print('Load the model')
+model = torch.load(model_path)
 
 # Set the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -217,21 +214,21 @@ def model_experiments(model, wrapper, multiclass = False):
             text = text.to(device)
             attention_mask = attention_mask.to(device)
                         
-            class_criterion = np.isin(text[:, :], list_of_irrelevant_tokens)[..., np.newaxis]  
+            class_criterion = np.isin(text[:, :].cpu(), list_of_irrelevant_tokens)[..., np.newaxis]  
             class_criterion_list.append(class_criterion)
 
             start_time = time.time()
             y_hat, attention_scores = model(text, attention_mask, exp_scores = True)
             
             if multiclass == False: 
-                probabilities = torch.sigmoid(y_hat)
+                probabilities = torch.sigmoid(y_hat).cpu()
             else: 
-                probabilities = torch.softmax(y_hat, dim = 1)
+                probabilities = torch.softmax(y_hat, dim = 1).cpu()
             
             classifier_output.append(probabilities)
 
             #get attention_explanation scores
-            att_explanations.append(attention_scores) #Shape (batch, label, length_secquence)
+            att_explanations.append(attention_scores.cpu()) #Shape (batch, label, length_secquence)
             end_time = time.time()
             times_attention_calculation.append(end_time - start_time)
 
@@ -294,9 +291,10 @@ def model_experiments(model, wrapper, multiclass = False):
     return att_explanations, shap_explanations, base_line[0], acc_att, acc_shap, share_of_irrelevant_attention_tokens[0], share_of_irrelevant_shap_tokens[0]
 
 att_exp, shap_exp, base_line, subset_acc_att, subset_acc_shap, share_of_irrelevant_attention_tokens, share_of_irrelevant_shap_tokens = model_experiments(model, model_wrapper, multiclass = multiclass)
-#correlations1 = rowwise_correlation(att_exp.numpy(), shap_exp)
+correlations1 = rowwise_correlation(att_exp.numpy(), shap_exp)
+
 att_exp2, shap_exp2, base_line2, subset_acc_att2, subset_acc_shap2, share_of_irrelevant_attention_tokens2, share_of_irrelevant_shap_tokens2 = model_experiments(uniform_attention_model, model_wrapper_2, multiclass = multiclass)
-#correlations2 = rowwise_correlation(att_exp2.numpy(), shap_exp2)
+correlations2 = rowwise_correlation(att_exp2.numpy(), shap_exp2)
 
 #for multiple classes, multinomial or multiclass use only first class: 
 #correlations1 = rowwise_correlation(att_exp[:,0,:].unsqueeze(1).numpy(), np.expand_dims(shap_exp[:,0,:], axis = 1))

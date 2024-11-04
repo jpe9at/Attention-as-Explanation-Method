@@ -8,13 +8,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 class Trainer: 
     """The base class for training models with data."""
-    def __init__(self, max_epochs=1, batch_size=36, early_stopping_patience=6, 
-                 min_delta=0.009):
+    def __init__(self, max_epochs=1, batch_size=36, early_stopping_patience=6, min_delta=0.009):
         self.max_epochs = max_epochs
         self.batch_size = batch_size
 
-        # Set the device
-        self.device = torch.device("cuda" if torch.cuda.is_available() and num_gpus > 0 else "cpu")
+        self.early_stopping_patience = early_stopping_patience
+        self.best_val_loss = float('inf')
+        self.num_epochs_no_improve = 0
+        self.min_delta = min_delta
+
 
     def prepare_val_data(self, text_data):
         self.val_dataloader = DataLoader(text_data, batch_size=self.batch_size, shuffle=True)
@@ -27,8 +29,8 @@ class Trainer:
             
     def prepare_model(self, model):
         model.trainer = self
-        self.model = model.to(self.device)  # Move model to the device
-    
+        self.model = model
+
     def fit(self, model, train_dataset, val_dataset):
         self.train_loss_values = []
         self.val_loss_values = []
@@ -39,18 +41,42 @@ class Trainer:
         for epoch in range(self.max_epochs):
             self.model.train()
             train_loss, val_loss = self.fit_epoch()
+
+            if (epoch+1) % 2 == 0:
+                print(f'Epoch [{epoch+1}/{self.max_epochs}], Train_Loss: {train_loss:.4f}, Val_Loss: {val_loss: .4f}')
+            
             self.train_loss_values.append(train_loss)
             self.val_loss_values.append(val_loss)
-            print(f"Epoch {epoch + 1}/{self.max_epochs} completed. Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")  # Print epoch summary
+
+            #########################################
+            #Early Stopping Monitor
+            if (self.best_val_loss - val_loss) > self.min_delta:
+                self.best_val_loss = val_loss
+                self.num_epochs_no_improve = 0
+            else:
+                self.num_epochs_no_improve += 1
+                if self.num_epochs_no_improve == self.early_stopping_patience:
+                    print("Early stopping at epoch", epoch)
+                    break
+            ########################################
+
+            ########################################
+            #Scheduler for adaptive learning rate
+            #if self.model.scheduler is not None:
+            #    self.model.scheduler.step(val_loss)
+            ########################################
+
+
     def fit_epoch(self):
         train_loss = 0.0
         total_batches = len(self.train_dataloader)
 
+        device = next(self.model.parameters()).device
         for idx, (text, attention_mask, labels) in enumerate(self.train_dataloader):
             # Move inputs to the device
-            text = text.to(self.device)
-            attention_mask = attention_mask.to(self.device)
-            labels = labels.to(self.device)
+            #text = text.to(device)
+            attention_mask = attention_mask.to(device)
+            labels = labels.to(device)
             output, _ = self.model(text, attention_mask)
             loss = self.model.loss(output, labels)
             self.model.optimizer.zero_grad()
@@ -71,6 +97,7 @@ class Trainer:
         val_loss = 0.0
         with torch.no_grad():
             for text, attention_mask, labels in self.val_dataloader:
+                labels = labels.to(device)
                 val_output, _ = self.model(text, attention_mask)
                 loss = self.model.loss(val_output, labels)
                 val_loss += loss.item() * text.size(0) #why multiplication with 0?
@@ -83,11 +110,13 @@ class Trainer:
         all_targets = []
         all_predictions = []
 
+        device = next(model.parameters()).device
+        
         with torch.no_grad():
             for text, attention_mask, labels in self.test_dataloader:
                 # Move inputs to the device
-                text = text.to(self.device)
-                attention_mask = attention_mask.to(self.device)
+                text = text.to(device)
+                attention_mask = attention_mask.to(device)
                 
                 y_hat, _ = model(text, attention_mask)
                 probabilities = torch.sigmoid(y_hat)
@@ -112,12 +141,14 @@ class Trainer:
             self.prepare_test_data(data)
             all_targets = []
             all_predictions = []
+            
+            device = next(self.model.parameters()).device
 
             with torch.no_grad():
                 for text, attention_mask, labels in self.test_dataloader:
                     # Move inputs to the device
-                    text = text.to(self.device)
-                    attention_mask = attention_mask.to(self.device)
+                    text = text.to(device)
+                    attention_mask = attention_mask.to(device)
                     
                     y_hat, _ = model(text, attention_mask)
                     predictions = torch.argmax(y_hat, dim = 1) #shape (batch_size, num_classes)

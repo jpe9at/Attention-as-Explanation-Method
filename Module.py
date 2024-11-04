@@ -81,9 +81,9 @@ class UniformAttentionLayer(nn.Module):
         return context_vector, attention_weights
 
 
-class DenseAttentionLayer(nn.Module):
+class AttentionLayer(nn.Module):
     def __init__(self, hidden_size, device):
-        super(DenseAttentionLayer, self).__init__()
+        super(AttentionLayer, self).__init__()
         self.hidden_size = hidden_size
         self.weight_vector = nn.Parameter(torch.randn(hidden_size).to(device))  # Weight vector w_a
 
@@ -112,7 +112,7 @@ class BERTClassifier(nn.Module):
 
         device = next(self.parameters()).device  # Get curren't device
         if attention == 'dense': 
-            self.attention_layer = DenseAttentionLayer(self.bert.config.hidden_size,device)
+            self.attention_layer = AttentionLayer(self.bert.config.hidden_size,device)
         elif attention == 'uniform': 
             self.attention_layer = UniformAttentionLayer(self.bert.config.hidden_size)
         elif attention == 'sparse':
