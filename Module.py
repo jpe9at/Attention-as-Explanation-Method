@@ -4,6 +4,60 @@ import torch
 import torch.nn.init as init
 import torch.nn.functional as F
 
+class Sparsemax(nn.Module):
+    def __init__(self, dim=None):
+        super(Sparsemax, self).__init__()
+        self.dim = dim
+
+    def forward(self, input):
+        dim = self.dim if self.dim is not None else -1
+        # Sort input in descending order
+        sorted_input, _ = torch.sort(input, descending=True, dim=dim)
+        cumsum_sorted_input = torch.cumsum(sorted_input, dim)
+
+        # Create a mask for the cumulative sums
+        range_vector = torch.arange(1, input.size(dim) + 1, device=input.device, dtype=input.dtype).view(
+            *([1] * (dim if dim >= 0 else dim + input.dim())), -1
+        )
+        
+        threshold = (cumsum_sorted_input - 1) / range_vector
+        is_greater = sorted_input > threshold
+        k = is_greater.sum(dim=dim, keepdim=True).to(input.dtype)
+
+        # Compute tau threshold
+        tau = (cumsum_sorted_input.gather(dim, k.long() - 1) - 1) / k
+        output = torch.clamp(input - tau, min=0)
+        return output
+
+
+class SparseAttentionLayer(nn.Module):
+    def __init__(self, hidden_size, device):
+        super(SparseAttentionLayer, self).__init__()
+        self.hidden_size = hidden_size
+        self.weight_vector = nn.Parameter(torch.randn(hidden_size).to(device))  # Weight vector w_a
+        self.sparsemax = Sparsemax(dim=1)  # Initialize sparsemax along sequence length dimension
+
+    def forward(self, hidden_states):
+        # hidden_states shape: (batch_size, seq_len, hidden_size)
+        
+        # Calculate attention scores for each word
+        scores = torch.matmul(hidden_states, self.weight_vector)  # Shape: (batch_size, seq_len)
+
+        temperature = 2.0  # Choose a temperature > 1 to make attention distribution softer
+        scaled_scores = scores / temperature
+
+        # Use sparsemax instead of softmax for sparse attention weights
+        attention_weights = self.sparsemax(scores)  # Shape: (batch_size, seq_len)
+
+        # Expand dimensions for multiplication
+        attention_weights = attention_weights.unsqueeze(-1)  # Shape: (batch_size, seq_len, 1)
+
+        # Compute the context vector as the weighted sum of hidden states
+        context_vector = torch.sum(attention_weights * hidden_states, dim=1)  # Shape: (batch_size, hidden_size)
+
+        return context_vector, attention_weights
+
+
 
 class UniformAttentionLayer(nn.Module):
     def __init__(self, hidden_size):
@@ -27,9 +81,9 @@ class UniformAttentionLayer(nn.Module):
         return context_vector, attention_weights
 
 
-class AttentionLayer(nn.Module):
+class DenseAttentionLayer(nn.Module):
     def __init__(self, hidden_size, device):
-        super(AttentionLayer, self).__init__()
+        super(DenseAttentionLayer, self).__init__()
         self.hidden_size = hidden_size
         self.weight_vector = nn.Parameter(torch.randn(hidden_size).to(device))  # Weight vector w_a
 
@@ -58,11 +112,11 @@ class BERTClassifier(nn.Module):
 
         device = next(self.parameters()).device  # Get curren't device
         if attention == 'dense': 
-            self.attention_layer = AttentionLayer(self.bert.config.hidden_size,device)
+            self.attention_layer = DenseAttentionLayer(self.bert.config.hidden_size,device)
         elif attention == 'uniform': 
             self.attention_layer = UniformAttentionLayer(self.bert.config.hidden_size)
         elif attention == 'sparse':
-            raise NotImplementedError("Implement Sparse Attention.")
+            self.attention_layer = SparseAttentionLayer(self.bert.config.hidden_size, device)
         else: 
             raise ValueError(f"Invalid mode: {attention}. Must be one of one of 'dense', 'uniform' or 'sparse'.")
         self.dropout = nn.Dropout(0.1)

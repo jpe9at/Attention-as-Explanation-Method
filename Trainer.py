@@ -23,7 +23,7 @@ class Trainer:
         self.train_dataloader = DataLoader(text_data, batch_size=self.batch_size, shuffle=True)
     
     def prepare_test_data(self, test_dataset):
-        self.test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
             
     def prepare_model(self, model):
         model.trainer = self
