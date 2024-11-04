@@ -78,7 +78,7 @@ test_dataset = TextData(test_dataset['content'], test_dataset['label'], tokenize
 
 '''
 ###############################################
-
+'''
 print('loading imdb')
 dataset = load_dataset("imdb")
 
@@ -86,10 +86,10 @@ test_dataset = pd.DataFrame(dataset["test"][0:50])
 
 # Create the dataset
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=False, labels_datatype = 'long')
-
+'''
 
 #####################################################################
-'''
+
 print('loading yelp')
 dataset = load_dataset("yelp_polarity")
 
@@ -98,7 +98,7 @@ test_dataset = pd.DataFrame(dataset["test"][0:500])
 # Create the dataset
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=False, labels_datatype = 'long')
 
-'''
+
 ###########################################################
 
 print('Load the model')

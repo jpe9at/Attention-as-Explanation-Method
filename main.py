@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from Trainer import Trainer
 import io
 import shap
-from IPython.display import display, HTML
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, hamming_loss, roc_auc_score
@@ -208,7 +207,7 @@ sns.heatmap([shap_values[0, :, 0].values], annot=[tokens], fmt="", cmap='coolwar
 plt.xlabel("Tokens")
 plt.title(f"SHAP Heatmap for Label {label_idx}")
 plt.figure(figsize=(10, 2))
-sns.heatmap([shap_values_manual[0, :, 0].values], annot=[manual_tokens], fmt="", cmap='coolwarm', cbar=True, xticklabels=tokens, yticklabels=["Explanation Scores"])
+sns.heatmap([shap_values_manual[0, :, 0].values], annot=[manual_tokens], fmt="", cmap='coolwarm', cbar=True, xticklabels=manual_tokens, yticklabels=["Explanation Scores"])
 plt.xlabel("Tokens")
 plt.title(f"SHAP Heatmap for Label {label_idx}")
 plt.show()
