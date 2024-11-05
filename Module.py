@@ -7,9 +7,12 @@ import torch.nn.functional as F
 class Sparsemax(nn.Module):
     def __init__(self, dim=None):
         super(Sparsemax, self).__init__()
-        self.dim = dim
+        self.dim = dim #set dimension at which Sparsemax is calculated
 
     def forward(self, input):
+        """This method defines a threshold based on total values and lenght of the sequence
+        which is used to set all weights below that threshold to zero."""
+        
         dim = self.dim if self.dim is not None else -1
         # Sort input in descending order
         sorted_input, _ = torch.sort(input, descending=True, dim=dim)
@@ -31,6 +34,7 @@ class Sparsemax(nn.Module):
 
 
 class SparseAttentionLayer(nn.Module):
+    """Implements the sparse Attention Layer"""
     def __init__(self, hidden_size, device):
         super(SparseAttentionLayer, self).__init__()
         self.hidden_size = hidden_size
@@ -60,6 +64,7 @@ class SparseAttentionLayer(nn.Module):
 
 
 class UniformAttentionLayer(nn.Module):
+    """Implements the uniorm Attention layer"""
     def __init__(self, hidden_size):
         super(UniformAttentionLayer, self).__init__()
         self.hidden_size = hidden_size
@@ -82,6 +87,7 @@ class UniformAttentionLayer(nn.Module):
 
 
 class AttentionLayer(nn.Module):
+    """Implements a single head dot prodcut attention layer"""
     def __init__(self, hidden_size, device):
         super(AttentionLayer, self).__init__()
         self.hidden_size = hidden_size
@@ -107,6 +113,7 @@ class BERTClassifier(nn.Module):
         super(BERTClassifier, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model_name)
 
+        #freeze the weights of the pretrained model
         for param in self.bert.parameters():
             param.requires_grad = False
 
@@ -119,6 +126,7 @@ class BERTClassifier(nn.Module):
             self.attention_layer = SparseAttentionLayer(self.bert.config.hidden_size, device)
         else: 
             raise ValueError(f"Invalid mode: {attention}. Must be one of one of 'dense', 'uniform' or 'sparse'.")
+        
         self.dropout = nn.Dropout(0.1)
         self.fc = nn.Linear(self.bert.config.hidden_size, num_classes)
 
@@ -130,7 +138,7 @@ class BERTClassifier(nn.Module):
 
         self.optimizer = self.get_optimizer(optimizer, self.learning_rate, self.l2_rate)
         self.loss = self.get_loss(loss_function)
-        self.scheduler = self.get_scheduler(scheduler, self.optimizer)
+        #self.scheduler = self.get_scheduler(scheduler, self.optimizer)
 
     def forward(self, input_ids, attention_mask, exp_scores=False):
         # Ensure the input tensors are on the correct device
@@ -155,6 +163,8 @@ class BERTClassifier(nn.Module):
         return logits, explanation_scores
 
     def compute_explanation_scores(self, hidden_states, attention_weights, classifier_weights):
+        """Computes the explanation scores based on the weights in the attention layer"""
+        
         # Ensure the weights are on the correct device
         classifier_weights = classifier_weights.to(next(self.parameters()).device)
 
@@ -193,9 +203,6 @@ class BERTClassifier(nn.Module):
     def get_loss(self, loss_function):
         Loss_Functions = {
             'CEL': nn.CrossEntropyLoss(),
-            'MSE': nn.MSELoss(),
-            'MAE': nn.L1Loss(),
-            'Huber': nn.HuberLoss(),
             'BCE': nn.BCEWithLogitsLoss()
         }
         return Loss_Functions[loss_function]
