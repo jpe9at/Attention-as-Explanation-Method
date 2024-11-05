@@ -1,6 +1,6 @@
 ## Attention as Explanation
 
-The aim of this project is to test how attention fares as a model explainer. Based on the weight of an attentin layer, feature importance scores are calculated that represent the contribution that each feature makes for the prediction. Or so the idea. I test whether Attention can serve this function in a number of experiments and in comparison to the SHAP explainer. The experimental set up and its rationale is detailed in the [report](https://github.com/jpe9at/Attention-as-Explanation-Method/blob/main/Report.pdf). 
+The aim of this project is to test how attention fares as a model explainer. Based on the weights of an attention layer, feature importance scores are calculated that represent the contribution that each feature makes for the prediction. Or so the idea. I test whether Attention can serve as a model explainer in this way in a number of experiments and in comparison to the SHAP explainer. The experimental set-up and its rationale is detailed in the [report](https://github.com/jpe9at/Attention-as-Explanation-Method/blob/main/Report.pdf). 
 
 ### Instructions on how to run the code
 
