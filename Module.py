@@ -130,6 +130,7 @@ class BERTClassifier(nn.Module):
 
         self.optimizer = self.get_optimizer(optimizer, self.learning_rate, self.l2_rate)
         self.loss = self.get_loss(loss_function)
+        self.scheduler = self.get_scheduler(scheduler, self.optimizer)
 
     def forward(self, input_ids, attention_mask, exp_scores=False):
         # Ensure the input tensors are on the correct device
