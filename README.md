@@ -1,11 +1,18 @@
 ## Attention as Explanation
 
-(work in progress)
+The aim of this project is to test how attention fares as a model explainer. Based on the weight of an attentin layer, feature importance scores are calculated that represent the contribution that each feature makes for the prediction. Or so the idea. I test whether Attention can serve this function in a number of experiments and in comparison to the SHAP explainer. The experimental set up and its rationale is detailed in the report. 
 
-The aim of this project is to train a classifier on the Dataset from the Jigsaw Unintended Bias in Toxicity Classification challenge https://www.kaggle.com/competitions/jigsaw-unintended-bias-in-toxicity-classification/data and compare two XAI methods to it. 
+To run the code the following is useful. All scripts are designed to run on a single cuda device (if specified). 
 
-The use of an attention module and the calculation of explanability scores based on its activaton scores as a model specific method.
+main.py trains the base models. It has an optional argument for adding a dataset (if no huggingface dataset is used) and requires a path to save the trained model to: 
+usage: main.py [-h] [--cuda_device CUDA_DEVICE] [--dataset DATASET]
+               path_to_save
+               
+Module.py contains the classes for all three attention layers, dense, uniform, and sparse. 
 
-The use of SHAP as a model agnostic explainer. 
+explainer_experiments.py runs the experiments. It requies a path to load the trained model from. 
+usage: explainer_experiments.py [-h] [--file_path FILE_PATH]
+                                [--cuda_device CUDA_DEVICE]
+                                path_to_load
 
-The aim is to compare the two in terms of runtime, the possibility of adversarial examples, as well as variability between the assigned scores. 
+Both, main.py and explainer_experiments.py contain code for training and experimenting with models on four different datasets. When using one of those datasets, the respective parts of the code needs to be commented out. If using multiclass or multinomial predictions, the correlations in explainer_experiments.py on lines 292, 293 need to be commented used when plotting correlation distributions.  
