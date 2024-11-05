@@ -282,6 +282,7 @@ def model_experiments(model, wrapper, multiclass = False):
 
     return att_explanations, shap_explanations, base_line[0], acc_att, acc_shap, share_of_irrelevant_attention_tokens[0], share_of_irrelevant_shap_tokens[0]
 
+
 att_exp, shap_exp, base_line, subset_acc_att, subset_acc_shap, share_of_irrelevant_attention_tokens, share_of_irrelevant_shap_tokens = model_experiments(model, model_wrapper, multiclass = multiclass)
 correlations1 = rowwise_correlation(att_exp.numpy(), shap_exp)
 
