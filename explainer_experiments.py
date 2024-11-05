@@ -18,7 +18,7 @@ import time
 from datasets import load_dataset
 import os
 
-# Path filepath as argument.
+# Filepath as argument.
 parser = argparse.ArgumentParser()
 
 # Step 2: Add the file path argument
@@ -27,10 +27,8 @@ parser.add_argument('--file_path', type=str, help='The path to the Dataset')
 parser.add_argument('--cuda_device', type=int, default=0, help='Specify the CUDA device number (default: 0)')
 
 args = parser.parse_args()
-#print('Selected device')
-#print(args.cuda_device)
-os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
 
+os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
 path = args.file_path
 model_path = args.path_to_load 
 
@@ -69,20 +67,16 @@ dataset = load_dataset("dbpedia_14")
 
 multiclass = True
 test_dataset = pd.DataFrame(dataset["test"]).sample(frac=0.007).reset_index(drop=True)
-# Set the device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
 
 # Create the dataset
 test_dataset = TextData(test_dataset['content'], test_dataset['label'], tokenizer, max_length=25, train=False, labels_datatype = 'long')
-
 '''
 ###############################################
 '''
 print('loading imdb')
 dataset = load_dataset("imdb")
 
-test_dataset = pd.DataFrame(dataset["test"][0:50])
+test_dataset = pd.DataFrame(dataset["test"][0:500])
 
 # Create the dataset
 test_dataset = TextData(test_dataset['text'], test_dataset['label'].to_frame(), tokenizer, max_length=25, train=False, labels_datatype = 'long')
@@ -111,26 +105,24 @@ model = model.to(device)
 
 model.eval()
 trainer = Trainer(64)
-#trainer.prepare_test_data(test_dataset)
 
-
+#if dbpedia is used, multiclass is set to True
 if multiclass == False: 
     num_outputs = len(test_dataset.labels[0])
-    subset_acc = trainer.test(model,test_dataset)
+    acc = trainer.test(model,test_dataset)
 else: 
     num_outputs = 14
-    subset_acc = trainer.test_multiclass(model,test_dataset)
+    acc = trainer.test_multiclass(model,test_dataset)
 
 
-print(f'Accuracy for base model: {subset_acc}')
+print(f'Accuracy for base model: {acc}')
 
-
+#Create a uniform adversary model: 
 uniform_attention_model = BERTClassifier('prajjwal1/bert-tiny', num_outputs, attention = 'uniform').to(device)
-
 uniform_attention_model.load_state_dict(model.state_dict(), strict=False)
 
-subset_acc = trainer.test(uniform_attention_model,test_dataset) if multiclass == False else trainer.test_multiclass(uniform_attention_model,test_dataset) 
-print(f'Accuracy for uniform attention model: {subset_acc}')
+acc = trainer.test(uniform_attention_model,test_dataset) if multiclass == False else trainer.test_multiclass(uniform_attention_model,test_dataset) 
+print(f'Accuracy for uniform attention model: {acc}')
 
 
 #####################################################################
